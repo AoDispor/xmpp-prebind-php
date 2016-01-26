@@ -29,12 +29,12 @@ class XmppPrebind {
 	const XMLNS_SASL    = 'urn:ietf:params:xml:ns:xmpp-sasl';
 	const XMLNS_VCARD   = 'vcard-temp';
 
-	const XML_LANG      = 'en';
-	const CONTENT_TYPE  = 'text/xml charset=utf-8';
+	const XML_LANG     = 'en';
+	const CONTENT_TYPE = 'text/xml charset=utf-8';
 
 	const ENCRYPTION_PLAIN      = 'PLAIN';
 	const ENCRYPTION_DIGEST_MD5 = 'DIGEST-MD5';
-	const ENCRYPTION_CRAM_MD5 = 'CRAM-MD5';
+	const ENCRYPTION_CRAM_MD5   = 'CRAM-MD5';
 
 	const SERVICE_NAME = 'xmpp';
 
@@ -50,11 +50,11 @@ class XmppPrebind {
 	 */
 	protected $firePhp = null;
 
-	protected $useGzip = false;
-	protected $useSsl = false;
+	protected $useGzip    = false;
+	protected $useSsl     = false;
 	protected $encryption = self::ENCRYPTION_PLAIN;
 
-	protected $jid = '';
+	protected $jid      = '';
 	protected $password = '';
 
 	protected $rid = '';
@@ -107,19 +107,19 @@ class XmppPrebind {
 		}
 
 		/* TODO: Not working
-		 if (function_exists('gzinflate')) {
-			$this->useGzip = true;
-		}*/
+			 if (function_exists('gzinflate')) {
+				$this->useGzip = true;
+		*/
 
 		/*
-		 * The client MUST generate a large, random, positive integer for the initial 'rid' (see Security Considerations)
-		 * and then increment that value by one for each subsequent request. The client MUST take care to choose an
-		 * initial 'rid' that will never be incremented above 9007199254740991 [21] within the session.
-		 * In practice, a session would have to be extraordinarily long (or involve the exchange of an extraordinary
-		 * number of packets) to exceed the defined limit.
-		 *
-		 * @link http://xmpp.org/extensions/xep-0124.html#rids
-		 */
+			 * The client MUST generate a large, random, positive integer for the initial 'rid' (see Security Considerations)
+			 * and then increment that value by one for each subsequent request. The client MUST take care to choose an
+			 * initial 'rid' that will never be incremented above 9007199254740991 [21] within the session.
+			 * In practice, a session would have to be extraordinarily long (or involve the exchange of an extraordinary
+			 * number of packets) to exceed the defined limit.
+			 *
+			 * @link http://xmpp.org/extensions/xep-0124.html#rids
+		*/
 		if (function_exists('mt_rand')) {
 			$this->rid = mt_rand(1000000000, 10000000000);
 		} else {
@@ -135,40 +135,42 @@ class XmppPrebind {
 	 * @param string $route Route
 	 */
 	public function connect($username, $password, $route = false) {
-		$this->jid      = $username . '@' . $this->jabberHost;
+		$this->jid = $username . '@' . $this->jabberHost;
 
-		if($this->resource) {
+		if ($this->resource) {
 			$this->jid .= '/' . $this->resource;
 		}
 
 		$this->password = $password;
 
 		$response = $this->sendInitialConnection($route);
-        if(empty($response)) {
+		if (empty($response)) {
 			throw new XmppPrebindConnectionException("No response from server.");
-        }
+		}
 
 		$body = self::getBodyFromXml($response);
-        if ( empty( $body ) )
+		if (empty($body)) {
 			throw new XmppPrebindConnectionException("No body could be found in response from server.");
+		}
+
 		$this->sid = $body->getAttribute('sid');
 
 		// set the Bosh Attributes
-		$this->wait = $body->getAttribute('wait');
-		$this->requests = $body->getAttribute('requests');
-		$this->ver = $body->getAttribute('ver');
-		$this->polling = $body->getAttribute('polling');
+		$this->wait       = $body->getAttribute('wait');
+		$this->requests   = $body->getAttribute('requests');
+		$this->ver        = $body->getAttribute('ver');
+		$this->polling    = $body->getAttribute('polling');
 		$this->inactivity = $body->getAttribute('inactivity');
-		$this->hold = $body->getAttribute('hold');
-		$this->to = $body->getAttribute('to');
-		$this->accept = $body->getAttribute('accept');
-		$this->maxpause = $body->getAttribute('maxpause');
+		$this->hold       = $body->getAttribute('hold');
+		$this->to         = $body->getAttribute('to');
+		$this->accept     = $body->getAttribute('accept');
+		$this->maxpause   = $body->getAttribute('maxpause');
 
 		$this->debug($this->sid, 'sid');
 
-        if(empty($body->firstChild) || empty($body->firstChild->firstChild)) {
+		if (empty($body->firstChild) || empty($body->firstChild->firstChild)) {
 			throw new XmppPrebindConnectionException("Child not found in response from server.");
-        }
+		}
 		$mechanisms = $body->getElementsByTagName('mechanism');
 
 		foreach ($mechanisms as $value) {
@@ -201,15 +203,15 @@ class XmppPrebind {
 		$auth = Auth_SASL::factory($this->encryption);
 
 		switch ($this->encryption) {
-			case self::ENCRYPTION_PLAIN:
-				$authXml = $this->buildPlainAuth($auth);
-				break;
-			case self::ENCRYPTION_DIGEST_MD5:
-				$authXml = $this->sendChallengeAndBuildDigestMd5Auth($auth);
-				break;
-			case self::ENCRYPTION_CRAM_MD5:
-				$authXml = $this->sendChallengeAndBuildCramMd5Auth($auth);
-				break;
+		case self::ENCRYPTION_PLAIN:
+			$authXml = $this->buildPlainAuth($auth);
+			break;
+		case self::ENCRYPTION_DIGEST_MD5:
+			$authXml = $this->sendChallengeAndBuildDigestMd5Auth($auth);
+			break;
+		case self::ENCRYPTION_CRAM_MD5:
+			$authXml = $this->sendChallengeAndBuildCramMd5Auth($auth);
+			break;
 		}
 		$response = $this->send($authXml);
 
@@ -231,19 +233,18 @@ class XmppPrebind {
 	 *
 	 * @return array
 	 */
-	public function getBoshInfo()
-	{
+	public function getBoshInfo() {
 		return array(
-			'wait' => $this->wait,
-			'requests' => $this->requests,
-			'ver' => $this->ver,
-			'polling' => $this->polling,
+			'wait'       => $this->wait,
+			'requests'   => $this->requests,
+			'ver'        => $this->ver,
+			'polling'    => $this->polling,
 			'inactivity' => $this->inactivity,
-			'hold' => $this->hold,
-			'to' => $this->to,
-			'ack' => $this->ack,
-			'accept' => $this->accept,
-			'maxpause' => $this->maxpause,
+			'hold'       => $this->hold,
+			'to'         => $this->to,
+			'ack'        => $this->ack,
+			'accept'     => $this->accept,
+			'maxpause'   => $this->maxpause,
 		);
 	}
 
@@ -275,12 +276,12 @@ class XmppPrebind {
 	 */
 	protected function sendRestart() {
 		$domDocument = $this->buildBody();
-		$body = self::getBodyFromDomDocument($domDocument);
+		$body        = self::getBodyFromDomDocument($domDocument);
 		$body->appendChild(self::getNewTextAttribute($domDocument, 'to', $this->jabberHost));
 		$body->appendChild(self::getNewTextAttribute($domDocument, 'xmlns:xmpp', self::XMLNS_BOSH));
 		$body->appendChild(self::getNewTextAttribute($domDocument, 'xmpp:restart', 'true'));
 
-		$restartResponse = $this->send($domDocument->saveXML());
+		$restartResponse = $this->send($domDocument->saveXML($domDocument->documentElement));
 
 		$restartBody = self::getBodyFromXml($restartResponse);
 		foreach ($restartBody->childNodes as $bodyChildNodes) {
@@ -306,7 +307,7 @@ class XmppPrebind {
 	protected function sendBindIfRequired() {
 		if ($this->doBind) {
 			$domDocument = $this->buildBody();
-			$body = self::getBodyFromDomDocument($domDocument);
+			$body        = self::getBodyFromDomDocument($domDocument);
 
 			$iq = $domDocument->createElement('iq');
 			$iq->appendChild(self::getNewTextAttribute($domDocument, 'xmlns', self::XMLNS_CLIENT));
@@ -323,7 +324,7 @@ class XmppPrebind {
 			$iq->appendChild($bind);
 			$body->appendChild($iq);
 
-			return $this->send($domDocument->saveXML());
+			return $this->send($domDocument->saveXML($domDocument->documentElement));
 		}
 		return false;
 	}
@@ -334,7 +335,7 @@ class XmppPrebind {
 	protected function sendSessionIfRequired() {
 		if ($this->doSession) {
 			$domDocument = $this->buildBody();
-			$body = self::getBodyFromDomDocument($domDocument);
+			$body        = self::getBodyFromDomDocument($domDocument);
 
 			$iq = $domDocument->createElement('iq');
 			$iq->appendChild(self::getNewTextAttribute($domDocument, 'xmlns', self::XMLNS_CLIENT));
@@ -347,7 +348,7 @@ class XmppPrebind {
 			$iq->appendChild($session);
 			$body->appendChild($iq);
 
-			return $this->send($domDocument->saveXML());
+			return $this->send($domDocument->saveXML($domDocument->documentElement));
 		}
 		return false;
 	}
@@ -360,7 +361,7 @@ class XmppPrebind {
 	 */
 	protected function sendInitialConnection($route = false) {
 		$domDocument = $this->buildBody();
-		$body = self::getBodyFromDomDocument($domDocument);
+		$body        = self::getBodyFromDomDocument($domDocument);
 
 		$waitTime = 60;
 
@@ -370,12 +371,11 @@ class XmppPrebind {
 		$body->appendChild(self::getNewTextAttribute($domDocument, 'xmpp:version', '1.0'));
 		$body->appendChild(self::getNewTextAttribute($domDocument, 'wait', $waitTime));
 
-		if ($route)
-		{
+		if ($route) {
 			$body->appendChild(self::getNewTextAttribute($domDocument, 'route', $route));
 		}
 
-		return $this->send($domDocument->saveXML());
+		return $this->send($domDocument->saveXML($domDocument->documentElement));
 	}
 
 	/**
@@ -385,16 +385,16 @@ class XmppPrebind {
 	 */
 	protected function sendChallenge() {
 		$domDocument = $this->buildBody();
-		$body = self::getBodyFromDomDocument($domDocument);
+		$body        = self::getBodyFromDomDocument($domDocument);
 
 		$auth = $domDocument->createElement('auth');
 		$auth->appendChild(self::getNewTextAttribute($domDocument, 'xmlns', self::XMLNS_SASL));
 		$auth->appendChild(self::getNewTextAttribute($domDocument, 'mechanism', $this->encryption));
 		$body->appendChild($auth);
 
-		$response = $this->send($domDocument->saveXML());
+		$response = $this->send($domDocument->saveXML($domDocument->documentElement));
 
-		$body = $this->getBodyFromXml($response);
+		$body      = $this->getBodyFromXml($response);
 		$challenge = base64_decode($body->firstChild->nodeValue);
 
 		return $challenge;
@@ -412,7 +412,7 @@ class XmppPrebind {
 		$this->debug($authString, 'PLAIN Auth String');
 
 		$domDocument = $this->buildBody();
-		$body = self::getBodyFromDomDocument($domDocument);
+		$body        = self::getBodyFromDomDocument($domDocument);
 
 		$auth = $domDocument->createElement('auth');
 		$auth->appendChild(self::getNewTextAttribute($domDocument, 'xmlns', self::XMLNS_SASL));
@@ -420,7 +420,7 @@ class XmppPrebind {
 		$auth->appendChild($domDocument->createTextNode($authString));
 		$body->appendChild($auth);
 
-		return $domDocument->saveXML();
+		return $domDocument->saveXML($domDocument->documentElement);
 	}
 
 	/**
@@ -438,7 +438,7 @@ class XmppPrebind {
 		$authString = base64_encode($authString);
 
 		$domDocument = $this->buildBody();
-		$body = self::getBodyFromDomDocument($domDocument);
+		$body        = self::getBodyFromDomDocument($domDocument);
 
 		$response = $domDocument->createElement('response');
 		$response->appendChild(self::getNewTextAttribute($domDocument, 'xmlns', self::XMLNS_SASL));
@@ -446,8 +446,7 @@ class XmppPrebind {
 
 		$body->appendChild($response);
 
-
-		$challengeResponse = $this->send($domDocument->saveXML());
+		$challengeResponse = $this->send($domDocument->saveXML($domDocument->documentElement));
 
 		return $this->replyToChallengeResponse($challengeResponse);
 	}
@@ -467,7 +466,7 @@ class XmppPrebind {
 		$authString = base64_encode($authString);
 
 		$domDocument = $this->buildBody();
-		$body = self::getBodyFromDomDocument($domDocument);
+		$body        = self::getBodyFromDomDocument($domDocument);
 
 		$response = $domDocument->createElement('response');
 		$response->appendChild(self::getNewTextAttribute($domDocument, 'xmlns', self::XMLNS_SASL));
@@ -475,7 +474,7 @@ class XmppPrebind {
 
 		$body->appendChild($response);
 
-		$challengeResponse = $this->send($domDocument->saveXML());
+		$challengeResponse = $this->send($domDocument->saveXML($domDocument->documentElement));
 
 		return $this->replyToChallengeResponse($challengeResponse);
 	}
@@ -485,20 +484,20 @@ class XmppPrebind {
 	 * After this additional reply, the server should reply with "success".
 	 */
 	protected function replyToChallengeResponse($challengeResponse) {
-		$body = self::getBodyFromXml($challengeResponse);
-		$challenge = base64_decode((string)$body->firstChild->nodeValue);
+		$body      = self::getBodyFromXml($challengeResponse);
+		$challenge = base64_decode((string) $body->firstChild->nodeValue);
 		if (strpos($challenge, 'rspauth') === false) {
 			throw new XmppPrebindConnectionException('Invalid challenge response received');
 		}
 
 		$domDocument = $this->buildBody();
-		$body = self::getBodyFromDomDocument($domDocument);
-		$response = $domDocument->createElement('response');
+		$body        = self::getBodyFromDomDocument($domDocument);
+		$response    = $domDocument->createElement('response');
 		$response->appendChild(self::getNewTextAttribute($domDocument, 'xmlns', self::XMLNS_SASL));
 
 		$body->appendChild($response);
 
-		return $domDocument->saveXML();
+		return $domDocument->saveXML($domDocument->documentElement);
 	}
 
 	/**
@@ -551,22 +550,28 @@ class XmppPrebind {
 	 * @return string|bool
 	 */
 	public static function compatibleGzInflate($gzData) {
-		if ( substr($gzData, 0, 3) == "\x1f\x8b\x08" ) {
-			$i = 10;
-			$flg = ord( substr($gzData, 3, 1) );
-			if ( $flg > 0 ) {
-				if ( $flg & 4 ) {
-					list($xlen) = unpack('v', substr($gzData, $i, 2) );
-					$i = $i + 2 + $xlen;
+		if (substr($gzData, 0, 3) == "\x1f\x8b\x08") {
+			$i   = 10;
+			$flg = ord(substr($gzData, 3, 1));
+			if ($flg > 0) {
+				if ($flg & 4) {
+					list($xlen) = unpack('v', substr($gzData, $i, 2));
+					$i          = $i + 2 + $xlen;
 				}
-				if ( $flg & 8 )
+				if ($flg & 8) {
 					$i = strpos($gzData, "\0", $i) + 1;
-				if ( $flg & 16 )
+				}
+
+				if ($flg & 16) {
 					$i = strpos($gzData, "\0", $i) + 1;
-				if ( $flg & 2 )
+				}
+
+				if ($flg & 2) {
 					$i = $i + 2;
+				}
+
 			}
-			return gzinflate( substr($gzData, $i, -8) );
+			return gzinflate(substr($gzData, $i, -8));
 		} else {
 			return false;
 		}
@@ -677,6 +682,6 @@ class XmppPrebind {
 /**
  * Standard XmppPrebind Exception
  */
-class XmppPrebindException extends Exception{}
+class XmppPrebindException extends Exception {}
 
-class XmppPrebindConnectionException extends XmppPrebindException{}
+class XmppPrebindConnectionException extends XmppPrebindException {}
